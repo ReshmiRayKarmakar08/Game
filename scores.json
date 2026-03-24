@@ -1,0 +1,23 @@
+{
+    "beginner": [],
+    "intermediate": [
+        {
+            "name": "Reshmi",
+            "score": 200,
+            "correct": 2,
+            "streak": 2,
+            "mode": "intermediate",
+            "date": "2026-03-23T21:24:45+01:00"
+        }
+    ],
+    "challenge": [
+        {
+            "name": "Explorer",
+            "score": 0,
+            "correct": 0,
+            "streak": 0,
+            "mode": "challenge",
+            "date": "2026-03-23T21:28:28+01:00"
+        }
+    ]
+}
