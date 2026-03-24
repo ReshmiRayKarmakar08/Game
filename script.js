@@ -69,6 +69,151 @@ const AVATARS = [
 /* ============================================================
    SECTION 2: STATE & DOM REFS
    ============================================================ */
+
+const RESUME_KEY = "fq_resume_game";
+const SCORE_PREFIX = "fq_scores_";
+const SCORE_LIMIT = 15;
+
+function getScoreKey(mode) {
+  return `${SCORE_PREFIX}${mode}`;
+}
+
+function seedSampleScores() {
+  const samples = {
+    beginner: [
+      { name: "Aarav", score: 920, mode: "beginner", correct: 9, streak: 5 },
+      { name: "Mia", score: 860, mode: "beginner", correct: 8, streak: 4 },
+      { name: "Noah", score: 790, mode: "beginner", correct: 7, streak: 4 }
+    ],
+    intermediate: [
+      { name: "Ira", score: 1140, mode: "intermediate", correct: 9, streak: 6 },
+      { name: "Rohan", score: 1010, mode: "intermediate", correct: 8, streak: 5 },
+      { name: "Zoya", score: 970, mode: "intermediate", correct: 8, streak: 4 }
+    ],
+    challenge: [
+      { name: "Kabir", score: 1380, mode: "challenge", correct: 9, streak: 7 },
+      { name: "Anaya", score: 1290, mode: "challenge", correct: 8, streak: 6 },
+      { name: "Vihaan", score: 1180, mode: "challenge", correct: 8, streak: 5 }
+    ]
+  };
+
+  Object.keys(samples).forEach((mode) => {
+    const key = getScoreKey(mode);
+    const existing = JSON.parse(localStorage.getItem(key) || "[]");
+    if (!Array.isArray(existing) || existing.length === 0) {
+      localStorage.setItem(key, JSON.stringify(samples[mode]));
+    }
+  });
+}
+
+function saveResumeState() {
+  if (!State.questions.length || State.currentQ >= State.questions.length) return;
+
+  const snapshot = {
+    playerName: State.playerName,
+    mode: State.mode,
+    currentQ: State.currentQ,
+    questions: State.questions,
+    score: State.score,
+    lives: State.lives,
+    streak: State.streak,
+    bestStreak: State.bestStreak,
+    totalCorrect: State.totalCorrect,
+    totalWrong: State.totalWrong,
+    hintsUsed: State.hintsUsed,
+    level: State.level,
+    step: State.step,
+    visualMode: State.visualMode,
+    placedUnits: State.placedUnits,
+    answerInput: DOM.answerInput ? DOM.answerInput.value : "",
+    ansNum: DOM.ansNum ? DOM.ansNum.value : "",
+    ansDen: DOM.ansDen ? DOM.ansDen.value : "",
+    savedAt: Date.now()
+  };
+
+  localStorage.setItem(RESUME_KEY, JSON.stringify(snapshot));
+  refreshResumeButton();
+}
+
+function clearResumeState() {
+  localStorage.removeItem(RESUME_KEY);
+  refreshResumeButton();
+}
+
+function getResumeState() {
+  try {
+    const raw = localStorage.getItem(RESUME_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function refreshResumeButton() {
+  if (!DOM.btnResume) return;
+  const hasResume = !!getResumeState();
+  DOM.btnResume.style.display = hasResume ? "inline-flex" : "none";
+}
+
+function restoreGame(snapshot) {
+  if (!snapshot || !Array.isArray(snapshot.questions) || snapshot.questions.length === 0) return false;
+
+  State.playerName = snapshot.playerName || "Explorer";
+  State.mode = snapshot.mode || "intermediate";
+  State.currentQ = Math.max(0, Math.min(snapshot.currentQ || 0, snapshot.questions.length - 1));
+  State.questions = snapshot.questions;
+  State.score = snapshot.score || 0;
+  State.lives = snapshot.lives ?? 3;
+  State.streak = snapshot.streak || 0;
+  State.bestStreak = snapshot.bestStreak || 0;
+  State.totalCorrect = snapshot.totalCorrect || 0;
+  State.totalWrong = snapshot.totalWrong || 0;
+  State.hintsUsed = snapshot.hintsUsed || 0;
+  State.level = snapshot.level || 1;
+  State.step = snapshot.step || 1;
+  State.visualMode = snapshot.visualMode || "pizza";
+  State.placedUnits = snapshot.placedUnits || 0;
+
+  if (DOM.hdrName) DOM.hdrName.textContent = State.playerName;
+  updateLives();
+  updateLevel();
+
+  DOM.modeModeCards.forEach((x) => x.classList.toggle("selected", x.dataset.mode === State.mode));
+  DOM.vtabs.forEach((x) => x.classList.toggle("active", x.dataset.visual === State.visualMode));
+
+  $('seq-canvas').style.display = 'none';
+  showScreen('game-screen');
+  loadQuestion();
+
+  State.step = snapshot.step || 1;
+  State.placedUnits = snapshot.placedUnits || 0;
+  updateStepIndicator(State.step);
+
+  const chips = Array.from(DOM.trayUnits.children);
+  for (let i = 0; i < Math.min(State.placedUnits, chips.length); i++) {
+    chips[i].classList.add("placed");
+  }
+
+  if (DOM.answerInput) DOM.answerInput.value = snapshot.answerInput || "";
+  if (DOM.ansNum) DOM.ansNum.value = snapshot.ansNum || "";
+  if (DOM.ansDen) DOM.ansDen.value = snapshot.ansDen || "";
+
+  if (State.step >= 4) {
+    DOM.btnStepNext.style.display = "none";
+    DOM.answerSection.style.display = "flex";
+    if (State.mode === 'challenge' && State.q && typeof State.q.answer === 'string') {
+      DOM.fracAnsRow.style.display = 'flex';
+    }
+  }
+
+  const ans = Math.ceil((State.q.dividend[0] * State.q.divisor[1]) / (State.q.dividend[1] * State.q.divisor[0]));
+  if (State.placedUnits >= Math.floor(ans) && State.step < 4) {
+    DOM.btnCheck.style.display = "inline-flex";
+  }
+
+  redraw();
+  return true;
+}
 const State = {
   playerName: "Player", mode: "intermediate", currentQ: 0, questions: [], score: 0, lives: 3,
   streak: 0, bestStreak: 0, totalCorrect: 0, totalWrong: 0, hintsUsed: 0, level: 1, step: 1,
@@ -79,7 +224,7 @@ const State = {
 const $ = id => document.getElementById(id);
 const DOM = {
   splash: $("splash-screen"), game: $("game-screen"), results: $("results-screen"),
-  playerName: $("player-name"), btnStart: $("btn-start"), btnPlayNow: $("btn-play-now"),
+  playerName: $("player-name"), btnStart: $("btn-start"), btnResume: $("btn-resume"), btnPlayNow: $("btn-play-now"),
   btnHome: $("btn-home"), btnHint: $("btn-hint"), btnStepNext: $("btn-step-next"),
   btnCheck: $("btn-check"), btnSubmit: $("btn-submit"), btnNextQ: $("btn-next-q"),
   btnPlayAgain: $("btn-play-again"), btnHomeRes: $("btn-home-res"),
@@ -108,16 +253,96 @@ const ctx = DOM.canvas ? DOM.canvas.getContext("2d") : null;
    ============================================================ */
 
 function initTheme() {
-  const saved = localStorage.getItem('fq_theme') || 'light';
-  if (saved === 'dark') document.body.classList.add('dark-theme');
-  
-  [$('theme-toggle-landing'), $('theme-toggle-game')].forEach(btn => {
-    if(!btn) return;
+  const toggles = [$('theme-toggle-landing'), $('theme-toggle-game')].filter(Boolean);
+
+  const applyThemeUi = () => {
+    const isDark = document.body.classList.contains('dark-theme');
+    const nextMode = isDark ? 'light' : 'dark';
+    toggles.forEach(btn => {
+      btn.setAttribute('aria-label', `Switch to ${nextMode} mode`);
+      btn.setAttribute('title', `Switch to ${nextMode} mode`);
+      const icon = btn.querySelector('.theme-icon');
+      if (icon) icon.textContent = isDark ? 'light_mode' : 'dark_mode';
+    });
+    localStorage.setItem('fq_theme', isDark ? 'dark' : 'light');
+  };
+
+  document.body.classList.add('dark-theme');
+  applyThemeUi();
+
+  toggles.forEach(btn => {
     btn.addEventListener('click', () => {
       document.body.classList.toggle('dark-theme');
-      const current = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
-      localStorage.setItem('fq_theme', current);
+      applyThemeUi();
     });
+  });
+}
+
+function initHeaderControls() {
+  const logo = document.querySelector('.header-logo');
+  if (logo) {
+    const goHome = () => {
+      const splash = $('splash-screen');
+      if (splash) showScreen('splash-screen');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    logo.addEventListener('click', goHome);
+    logo.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        goHome();
+      }
+    });
+  }
+
+  const selector = $('lang-selector');
+  const dropdown = $('lang-dropdown');
+  const options = dropdown ? Array.from(dropdown.querySelectorAll('.lang-option')) : [];
+  const note = $('lang-note');
+  const current = $('lang-current');
+
+  if (!selector || !dropdown || options.length === 0 || !current) return;
+
+  const setOpen = (open) => {
+    selector.classList.toggle('open', open);
+    selector.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+
+  selector.addEventListener('click', (e) => {
+    if (!e.target.closest('.lang-option')) {
+      setOpen(!selector.classList.contains('open'));
+    }
+  });
+
+  selector.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setOpen(!selector.classList.contains('open'));
+    }
+    if (e.key === 'Escape') setOpen(false);
+  });
+
+  options.forEach((option) => {
+    option.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const label = option.textContent.trim();
+      current.textContent = 'ENGLISH';
+      options.forEach(o => o.classList.toggle('active', o.dataset.lang === 'en'));
+      if (note) {
+        note.textContent = `${label} selected. App language is currently fixed to English.`;
+      }
+      setOpen(false);
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!selector.contains(e.target)) {
+      setOpen(false);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') setOpen(false);
   });
 }
 
@@ -316,27 +541,40 @@ function drawBar(cx, cy, w, h, n, d, filled, isDiv = false) {
 function drawPizza(dividend, divisor, step, placed) {
   const W = DOM.canvas.width, H = DOM.canvas.height;
   ctx.clearRect(0, 0, W, H);
-  const [dN, dD] = dividend; const [vN, vD] = divisor;
-  const cxVal = W * 0.28, cyVal = H * 0.5, rVal = Math.min(H * 0.38, W * 0.22);
+  const [dN, dD] = dividend;
+  const [vN, vD] = divisor;
+
+  const rVal = Math.min(H * 0.36, W * 0.18);
+  const cxVal = step < 2 ? W * 0.5 : W * 0.32;
+  const cyVal = H * 0.5;
+
   drawRealPizza(cxVal, cyVal, rVal, dN, dD, step >= 1);
-  ctx.fillStyle = "var(--c-text-main)"; ctx.font = "bold 14px Nunito"; ctx.textAlign = "center";
+  ctx.fillStyle = "var(--c-text-main)";
+  ctx.font = "bold 14px Nunito";
+  ctx.textAlign = "center";
   ctx.fillText(`Dividend: ${dN}/${dD}`, cxVal, cyVal + rVal + 26);
 
   if (step < 2) return;
-  const cx2 = W * 0.72, cy2 = H * 0.5;
-  drawRealPizza(cx2, cy2, rVal * 0.7, vN, vD, true, true);
-  ctx.fillStyle = "var(--c-text-main)"; ctx.fillText(`Divisor: ${vN}/${vD}`, cx2, cy2 + rVal * 0.7 + 24);
 
-  if (step >= 2 && placed > 0) {
+  const cx2 = W * 0.72;
+  const cy2 = H * 0.5;
+  drawRealPizza(cx2, cy2, rVal * 0.7, vN, vD, true, true);
+  ctx.fillStyle = "var(--c-text-main)";
+  ctx.fillText(`Divisor: ${vN}/${vD}`, cx2, cy2 + rVal * 0.7 + 24);
+
+  if (placed > 0) {
     for (let i = 0; i < placed; i++) {
-        const startAngle = -Math.PI / 2 + (i * vN / vD) * 2 * Math.PI;
-        const endAngle   = startAngle + (vN / vD) * 2 * Math.PI;
-        ctx.beginPath(); ctx.moveTo(cxVal, cyVal); ctx.arc(cxVal, cyVal, rVal * 0.9, startAngle, endAngle); ctx.closePath();
-        ctx.fillStyle = "rgba(46, 196, 182, 0.4)"; ctx.fill();
-        ctx.strokeStyle = "#fff"; ctx.stroke();
-        const mid = (startAngle+endAngle)/2;
-        ctx.fillStyle = "#fff"; ctx.font = "bold 20px Fredoka One";
-        ctx.fillText(i+1, cxVal + Math.cos(mid)*rVal*0.6, cyVal + Math.sin(mid)*rVal*0.6);
+      const startAngle = -Math.PI / 2 + (i * vN / vD) * 2 * Math.PI;
+      const endAngle = startAngle + (vN / vD) * 2 * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(cxVal, cyVal);
+      ctx.arc(cxVal, cyVal, rVal * 0.9, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(46, 196, 182, 0.35)";
+      ctx.fill();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
     }
   }
 }
@@ -344,32 +582,49 @@ function drawPizza(dividend, divisor, step, placed) {
 function redraw() {
   if (!State.q || !ctx) return;
   const q = State.q;
+
+  const W = DOM.canvas.width;
+  const H = DOM.canvas.height;
+
   if (State.visualMode === 'pizza') {
     drawPizza(q.dividend, q.divisor, State.step, State.placedUnits);
-  } else {
-    const W = DOM.canvas.width, H = DOM.canvas.height;
-    ctx.clearRect(0, 0, W, H);
-    drawBar(W*0.1, H*0.2, W*0.8, 60, q.dividend[0], q.dividend[1], State.step >= 1);
-    ctx.fillStyle = "var(--c-text-main)"; ctx.font = "bold 14px Nunito"; ctx.textAlign = "center";
-    ctx.fillText(`Dividend: ${q.dividend[0]}/${q.dividend[1]}`, W*0.5, H*0.2 + 85);
+    return;
+  }
 
-    if (State.step >= 2) {
-      drawBar(W*0.1, H*0.55, W*0.4, 40, q.divisor[0], q.divisor[1], true, true);
-      ctx.fillStyle = "var(--c-text-main)"; ctx.fillText(`Divisor: ${q.divisor[0]}/${q.divisor[1]}`, W*0.3, H*0.55 + 65);
-      
-      if (State.placedUnits > 0) {
-        const unitW = (W*0.8) / q.dividend[1];
-        const divisorW = (W*0.8) * (q.divisor[0]/q.divisor[1]) / (q.dividend[0]/q.dividend[1]); // Wait, simple scale
-        const scale = (W*0.8) / (q.dividend[0]/q.dividend[1]);
-        const dw = scale * (q.divisor[0]/q.divisor[1]);
+  ctx.clearRect(0, 0, W, H);
 
-        for(let i=0; i<State.placedUnits; i++) {
-          ctx.fillStyle = "rgba(46, 196, 182, 0.4)";
-          ctx.fillRect(W*0.1 + i*dw, H*0.2, dw, 60);
-          ctx.strokeStyle = "#fff"; ctx.strokeRect(W*0.1 + i*dw, H*0.2, dw, 60);
-          ctx.fillStyle = "#fff"; ctx.font = "bold 18px Fredoka One";
-          ctx.fillText(i+1, W*0.1 + i*dw + dw/2, H*0.2 + 35);
-        }
+  const mainW = Math.min(W * 0.82, 560);
+  const mainX = (W - mainW) / 2;
+  const mainY = H * 0.24;
+  const mainH = 60;
+
+  drawBar(mainX, mainY, mainW, mainH, q.dividend[0], q.dividend[1], State.step >= 1);
+  ctx.fillStyle = "var(--c-text-main)";
+  ctx.font = "bold 14px Nunito";
+  ctx.textAlign = "center";
+  ctx.fillText(`Dividend: ${q.dividend[0]}/${q.dividend[1]}`, W * 0.5, mainY + 85);
+
+  if (State.step >= 2) {
+    const divW = Math.min(mainW * 0.52, 280);
+    const divX = (W - divW) / 2;
+    const divY = H * 0.58;
+    const divH = 42;
+
+    drawBar(divX, divY, divW, divH, q.divisor[0], q.divisor[1], true, true);
+    ctx.fillStyle = "var(--c-text-main)";
+    ctx.fillText(`Divisor: ${q.divisor[0]}/${q.divisor[1]}`, W * 0.5, divY + 66);
+
+    if (State.placedUnits > 0) {
+      const scale = mainW / (q.dividend[0] / q.dividend[1]);
+      const dw = scale * (q.divisor[0] / q.divisor[1]);
+
+      for (let i = 0; i < State.placedUnits; i++) {
+        const x = mainX + i * dw;
+        if (x >= mainX + mainW) break;
+        ctx.fillStyle = "rgba(46, 196, 182, 0.35)";
+        ctx.fillRect(x, mainY, dw, mainH);
+        ctx.strokeStyle = "#ffffff";
+        ctx.strokeRect(x, mainY, dw, mainH);
       }
     }
   }
@@ -385,42 +640,92 @@ function loadQuestion() {
   DOM.qAnswerSlot.textContent = "?"; DOM.qAnswerSlot.classList.remove("filled");
   DOM.eli5Divisor.textContent = `${q.divisor[0]}/${q.divisor[1]}`; DOM.eli5Dividend.textContent = `${q.dividend[0]}/${q.dividend[1]}`;
   DOM.trayUnitLabel.textContent = `${q.divisor[0]}/${q.divisor[1]}`;
-  DOM.btnStepNext.style.display = "inline-flex"; DOM.btnCheck.style.display = "none"; DOM.answerSection.style.display = "none"; DOM.feedbackBanner.style.display = "none";
+  DOM.btnStepNext.style.display = "inline-flex";
+  DOM.btnStepNext.textContent = "Next Step →";
+  DOM.btnCheck.style.display = "none";
+  DOM.answerSection.style.display = "none";
+  DOM.feedbackBanner.style.display = "none";
   DOM.answerInput.value = ""; DOM.ansNum.value = ""; DOM.ansDen.value = ""; DOM.fracAnsRow.style.display = "none";
-  updateStepIndicator(1); buildDivisorTray(); updateProgress(); redraw();
+  updateStepIndicator(1); buildDivisorTray(); updateProgress(); resizeGameCanvas();
 }
 
 function buildDivisorTray() {
   DOM.trayUnits.innerHTML = "";
   const ans = Math.ceil((State.q.dividend[0]*State.q.divisor[1])/(State.q.dividend[1]*State.q.divisor[0]));
   for (let i = 0; i < Math.min(ans + 2, 12); i++) {
-    const chip = document.createElement("div"); chip.className = "unit-chip pop-in"; chip.style.animationDelay = `${i * 0.04}s`;
+    const chip = document.createElement("div"); 
+    chip.className = "unit-chip pop-in"; 
+    chip.draggable = true;
+    chip.style.animationDelay = `${i * 0.04}s`;
     chip.innerHTML = `<span>${State.q.divisor[0]}/${State.q.divisor[1]}</span>`;
+    
+    // Drag Start
+    chip.addEventListener("dragstart", (e) => {
+        if (State.step < 2) { State.step = 2; updateStepIndicator(2); redraw(); }
+        e.dataTransfer.setData("text/plain", "chip");
+        chip.classList.add("dragging");
+    });
+    chip.addEventListener("dragend", () => chip.classList.remove("dragging"));
+
+    // Click fallback
     chip.addEventListener("click", () => {
-        if (State.step < 2) return;
-        chip.classList.add("placed"); State.placedUnits++;
-        if (State.step < 3) { State.step = 3; updateStepIndicator(3); }
-        if (State.placedUnits >= Math.floor(ans)) DOM.btnCheck.style.display = "inline-flex";
-        redraw();
+        if (chip.classList.contains("placed")) return;
+        if (State.step < 2) { State.step = 2; updateStepIndicator(2); redraw(); }
+        placeChip(chip, ans);
     });
     DOM.trayUnits.appendChild(chip);
   }
 }
 
+function placeChip(chip, ans) {
+    if (chip.classList.contains("placed")) return;
+    chip.classList.add("placed"); 
+    State.placedUnits++;
+    if (State.step < 3) { State.step = 3; updateStepIndicator(3); }
+    if (State.placedUnits >= Math.floor(ans)) {
+        DOM.btnCheck.style.display = "inline-flex";
+    }
+    redraw();
+    saveResumeState();
+}
+
+
 function checkAnswer() {
-  const q = State.q; let ok = false, usr;
+  const q = State.q;
+  let ok = false;
+  let usr;
+
+  const gcd = (a, b) => (b === 0 ? Math.abs(a) : gcd(b, a % b));
+
   if (State.mode === "challenge" && typeof q.answer === "string") {
-    const un = parseInt(DOM.ansNum.value), ud = parseInt(DOM.ansDen.value);
-    ok = (un/ud === q.answerNum/q.answerDen); usr = `${un}/${ud}`;
+    const un = parseInt(DOM.ansNum.value) || 0;
+    const ud = parseInt(DOM.ansDen.value) || 1;
+    const gUser = gcd(un, ud);
+    const gAns = gcd(q.answerNum, q.answerDen);
+
+    ok = (un / gUser === q.answerNum / gAns) && (ud / gUser === q.answerDen / gAns);
+    usr = `${un}/${ud}`;
   } else {
     usr = parseFloat(DOM.answerInput.value);
-    ok = Math.abs(usr - (typeof q.answer==='string'?q.answerNum/q.answerDen:q.answer)) < 0.01;
+    const expected = typeof q.answer === "string" ? q.answerNum / q.answerDen : q.answer;
+    ok = Number.isFinite(usr) && Math.abs(usr - expected) < 0.01;
   }
+
   if (ok) {
-    State.score += 100; State.streak++; State.totalCorrect++; updateLevel(); showFeedback(true, "+100 pts!", q.explanation); fireConfetti();
+    State.score += 100;
+    State.streak++;
+    State.totalCorrect++;
+    State.bestStreak = Math.max(State.bestStreak, State.streak);
+    updateLevel();
+    showFeedback(true, "+100 pts!", q.explanation);
+    fireConfetti();
   } else {
-    State.lives--; State.streak = 0; showFeedback(false, "Try again!", q.explanation); updateLives();
-    if(State.lives <= 0) setTimeout(endRound, 2000);
+    State.lives--;
+    State.streak = 0;
+    State.totalWrong++;
+    showFeedback(false, `You entered ${usr}.`, q.explanation);
+    updateLives();
+    if (State.lives <= 0) setTimeout(endRound, 2000);
   }
 }
 
@@ -429,44 +734,86 @@ function showFeedback(ok, msg, expl) {
   DOM.feedbackIcon.innerHTML = ok ? "<span class='material-symbols-rounded' style='color:#10b981;'>celebration</span>" : "<span class='material-symbols-rounded' style='color:#ef4444;'>error</span>";
   DOM.feedbackText.textContent = msg; DOM.feedbackExpl.textContent = expl;
   DOM.answerSection.style.display = "none"; redraw();
+  saveResumeState();
 }
 
 function updateLives() { DOM.hdrLives.innerHTML = "<span class='material-symbols-rounded' style='color:#ef4444; font-variation-settings: \"FILL\" 1;'>favorite</span>".repeat(State.lives) + "<span class='material-symbols-rounded' style='color:#ccc;'>favorite</span>".repeat(3 - State.lives); }
 function updateLevel() { State.level = Math.floor(State.score / 500) + 1; DOM.hdrLevel.textContent = State.level; DOM.hdrAvatar.innerHTML = AVATARS[Math.min(State.level-1, 5)]; DOM.hdrScore.textContent = State.score; }
+function resizeGameCanvas() {
+  if (!DOM.canvas) return;
+  const wrap = $('canvas-wrap');
+  const targetW = Math.max(320, Math.floor((wrap?.clientWidth || 620) - 2));
+  const targetH = 320;
+  DOM.canvas.width = targetW;
+  DOM.canvas.height = targetH;
+  redraw();
+}
+
+function showHint() {
+  if (!State.q || !DOM.hintModal) return;
+  State.hintsUsed++;
+  const q = State.q;
+  const expected = typeof q.answer === 'string' ? `${q.answerNum}/${q.answerDen}` : q.answer;
+  DOM.hintBody.innerHTML = `
+    <p><strong>Think:</strong> Divide by multiplying with reciprocal.</p>
+    <p>${q.dividend[0]}/${q.dividend[1]} ÷ ${q.divisor[0]}/${q.divisor[1]} = ${q.dividend[0]}/${q.dividend[1]} × ${q.divisor[1]}/${q.divisor[0]}</p>
+    <p>Expected result: <strong>${expected}</strong></p>
+  `;
+
+  const hctx = DOM.hintCanvas ? DOM.hintCanvas.getContext('2d') : null;
+  if (hctx && DOM.hintCanvas) {
+    hctx.clearRect(0, 0, DOM.hintCanvas.width, DOM.hintCanvas.height);
+    hctx.fillStyle = '#0f172a';
+    hctx.font = '700 14px Nunito';
+    hctx.fillText('Hint model:', 12, 22);
+    hctx.fillStyle = '#6c63ff';
+    hctx.fillRect(12, 36, 140, 22);
+    hctx.fillStyle = '#ff6b35';
+    hctx.fillRect(12, 76, 90, 18);
+    hctx.fillStyle = '#334155';
+    hctx.font = '700 12px Nunito';
+    hctx.fillText(`Dividend ${q.dividend[0]}/${q.dividend[1]}`, 160, 51);
+    hctx.fillText(`Divisor ${q.divisor[0]}/${q.divisor[1]}`, 110, 89);
+  }
+
+  DOM.hintModal.style.display = 'flex';
+}
 
 /* ============================================================
    SECTION 6: BACKEND & SCORES
    ============================================================ */
 
-async function saveScoreLocal() {
-  const data = { action: 'save_score', name: State.playerName, score: State.score, mode: State.mode, correct: State.totalCorrect, streak: State.bestStreak };
-  console.log("Saving score:", data);
-  // Optional PHP backend call
-  try {
-    await fetch('backend.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-  } catch(e) { console.warn("Backend save failed, using local fallback."); }
-  
-  const key = `fq_scores_${State.mode}`;
-  const ex = JSON.parse(localStorage.getItem(key) || "[]");
-  ex.push(data);
-  localStorage.setItem(key, JSON.stringify(ex.sort((a,b)=>b.score-a.score).slice(0, 15)));
+function saveScoreLocal() {
+  const data = {
+    name: State.playerName,
+    score: State.score,
+    mode: State.mode,
+    correct: State.totalCorrect,
+    streak: State.bestStreak,
+    savedAt: Date.now()
+  };
+
+  const key = getScoreKey(State.mode);
+  const existing = JSON.parse(localStorage.getItem(key) || "[]");
+  existing.push(data);
+  existing.sort((a, b) => (b.score || 0) - (a.score || 0));
+  localStorage.setItem(key, JSON.stringify(existing.slice(0, SCORE_LIMIT)));
 }
 
-async function renderLeaderboard(mode) {
-  let scores = [];
-  try {
-    const res = await fetch(`backend.php?action=get_scores&mode=${mode}`);
-    scores = await res.json();
-  } catch(e) {
-    scores = JSON.parse(localStorage.getItem(`fq_scores_${mode}`) || "[]");
-  }
-  
-  DOM.lbList.innerHTML = scores.length ? scores.map((x,i)=>`
-    <div class="lb-entry">
-      <span class="lb-rank ${i<3?['gold','silver','bronze'][i]:''}">${i+1}</span>
-      <span class="lb-name">${x.name}</span>
-      <span class="lb-score">${x.score}</span>
-    </div>`).join("") : `<div class="lb-loading">No scores yet!</div>`;
+function renderLeaderboard(mode) {
+  if (!DOM.lbList) return;
+  const key = getScoreKey(mode);
+  const scores = JSON.parse(localStorage.getItem(key) || "[]");
+  scores.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+  DOM.lbList.innerHTML = scores.length
+    ? scores.slice(0, SCORE_LIMIT).map((x, i) => `
+      <div class="lb-entry">
+        <span class="lb-rank ${i < 3 ? ['gold','silver','bronze'][i] : ''}">${i + 1}</span>
+        <span class="lb-name">${x.name || 'Player'}</span>
+        <span class="lb-score">${x.score || 0}</span>
+      </div>`).join("")
+    : `<div class="lb-loading">No scores yet!</div>`;
 }
 
 /* Confetti Particles */
@@ -492,25 +839,159 @@ function animateConfetti() {
 
 /* Initialization */
 document.addEventListener('DOMContentLoaded', () => {
-  initTheme(); initModals(); initImageSequence();
+  initTheme(); initHeaderControls(); initModals(); initImageSequence();
+  seedSampleScores();
+  refreshResumeButton();
+  resizeGameCanvas();
+  window.addEventListener("resize", resizeGameCanvas);
   DOM.btnStart.addEventListener('click', () => {
     State.playerName = DOM.playerName.value.trim() || "Explorer";
     State.score = 0; State.lives = 3; State.currentQ = 0;
+    State.streak = 0; State.bestStreak = 0; State.totalCorrect = 0; State.totalWrong = 0;
     State.questions = [...QUESTION_BANKS[State.mode]].sort(()=>Math.random()-0.5).slice(0,10);
-    updateLives(); updateLevel(); showScreen('game-screen'); loadQuestion();
+    clearResumeState();
+    if (DOM.hdrName) DOM.hdrName.textContent = State.playerName;
+    updateLives(); updateLevel();
+    $('seq-canvas').style.display = 'none';
+    showScreen('game-screen'); loadQuestion();
   });
-  DOM.btnHome.addEventListener('click', () => showScreen('splash-screen'));
-  DOM.btnStepNext.addEventListener('click', () => { State.step++; if(State.step===4) { DOM.btnStepNext.style.display='none'; DOM.answerSection.style.display='flex'; } updateStepIndicator(State.step); redraw(); });
-  DOM.btnSubmit.addEventListener('click', checkAnswer);
-  DOM.btnNextQ.addEventListener('click', () => { State.currentQ++; loadQuestion(); });
-  DOM.btnPlayAgain.addEventListener('click', () => DOM.btnStart.click());
-  DOM.btnHomeRes.addEventListener('click', () => showScreen('splash-screen'));
+  DOM.btnHome.addEventListener('click', () => { saveResumeState(); $('seq-canvas').style.display = 'block'; showScreen('splash-screen'); refreshResumeButton(); });
+  DOM.btnStepNext.addEventListener('click', () => {
+    if (State.step >= 4) return;
+
+    if (State.step === 1) {
+      State.step = 2;
+      DOM.btnStepNext.textContent = 'Next Step →';
+    } else if (State.step === 2) {
+      State.step = 3;
+      DOM.btnStepNext.textContent = 'Answer!';
+    } else if (State.step === 3) {
+      State.step = 4;
+      DOM.btnStepNext.style.display = 'none';
+      DOM.answerSection.style.display = 'flex';
+      if (State.mode === 'challenge' && State.q && typeof State.q.answer === 'string') {
+        DOM.fracAnsRow.style.display = 'flex';
+      }
+    }
+    updateStepIndicator(State.step); redraw(); saveResumeState();
+  });
+  DOM.btnHint.addEventListener('click', showHint);
+  const hintClose = $('hint-close');
+  if (hintClose) hintClose.addEventListener('click', () => { DOM.hintModal.style.display = 'none'; });
+  if (DOM.hintModal) {
+    DOM.hintModal.addEventListener('click', (e) => {
+      if (e.target === DOM.hintModal) DOM.hintModal.style.display = 'none';
+    });
+  }
+
+  DOM.btnCheck.addEventListener('click', () => {
+    if (!State.q) return;
+    State.step = 4;
+    updateStepIndicator(4);
+    DOM.answerSection.style.display = 'flex';
+    DOM.btnStepNext.style.display = 'none';
+    if (State.mode === 'challenge' && typeof State.q.answer === 'string') {
+      DOM.fracAnsRow.style.display = 'flex';
+    }
+  });
+  DOM.btnSubmit.addEventListener('click', () => { checkAnswer(); saveResumeState(); });
+  DOM.btnNextQ.addEventListener('click', () => { State.currentQ++; loadQuestion(); saveResumeState(); });
+  DOM.btnPlayAgain.addEventListener('click', () => { $('seq-canvas').style.display = 'none'; DOM.btnStart.click(); });
+  if (DOM.btnResume) {
+    DOM.btnResume.addEventListener('click', () => {
+      const snapshot = getResumeState();
+      if (snapshot && restoreGame(snapshot)) {
+        $('seq-canvas').style.display = 'none';
+      }
+    });
+  }
+
+  if (DOM.btnViewLb) {
+    DOM.btnViewLb.addEventListener('click', () => {
+      if (DOM.lbModal) DOM.lbModal.style.display = 'flex';
+      const activeMode = document.querySelector('.lb-tab.active')?.dataset.mode || State.mode || 'intermediate';
+      renderLeaderboard(activeMode);
+    });
+  }
+  const footerLb = $('footer-leaderboard');
+  if (footerLb) {
+    footerLb.addEventListener('click', () => {
+      const activeMode = document.querySelector('.lb-tab.active')?.dataset.mode || State.mode || 'intermediate';
+      renderLeaderboard(activeMode);
+    });
+  }
+
+  DOM.lbTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      DOM.lbTabs.forEach((t) => t.classList.remove('active'));
+      tab.classList.add('active');
+      renderLeaderboard(tab.dataset.mode);
+    });
+  });
+  DOM.btnHomeRes.addEventListener('click', () => { clearResumeState(); $('seq-canvas').style.display = 'block'; showScreen('splash-screen'); });
+  DOM.modeModeCards.forEach(c => c.addEventListener('click', () => {
+    DOM.modeModeCards.forEach(x => x.classList.remove('selected'));
+    c.classList.add('selected');
+    State.mode = c.dataset.mode;
+  }));
   DOM.vtabs.forEach(t => t.addEventListener('click', () => {
     DOM.vtabs.forEach(x => x.classList.remove('active'));
     t.classList.add('active');
     State.visualMode = t.dataset.visual;
     redraw();
+    saveResumeState();
   }));
+
+  // Canvas Drag & Drop listeners
+  const dropTargets = [DOM.canvas, $('canvas-wrap'), document.querySelector('.canvas-container')].filter(Boolean);
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const type = e.dataTransfer?.getData("text/plain");
+    if ((type && type !== "chip") || !State.q) return;
+
+    const nextChip = Array.from(DOM.trayUnits.children).find(c => !c.classList.contains("placed"));
+    if (!nextChip) return;
+
+    const ans = Math.ceil((State.q.dividend[0] * State.q.divisor[1]) / (State.q.dividend[1] * State.q.divisor[0]));
+    placeChip(nextChip, ans);
+  };
+
+  dropTargets.forEach((target) => {
+    target.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    });
+    target.addEventListener("drop", handleDrop);
+  });
 });
 
-function endRound() { showScreen('results-screen'); DOM.resScore.textContent = State.score; DOM.resCorrect.textContent = `${State.totalCorrect}/10`; saveScoreLocal(); }
+function endRound() {
+  State.bestStreak = Math.max(State.bestStreak, State.streak);
+  $('seq-canvas').style.display = 'block';
+  showScreen('results-screen');
+  DOM.resScore.textContent = State.score;
+  DOM.resCorrect.textContent = `${State.totalCorrect}/10`;
+  if (DOM.resStreak) DOM.resStreak.textContent = State.bestStreak;
+  saveScoreLocal();
+  clearResumeState();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

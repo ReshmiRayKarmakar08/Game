@@ -1,5 +1,22 @@
 {
-    "beginner": [],
+    "beginner": [
+        {
+            "name": "Explorer",
+            "score": 0,
+            "correct": 0,
+            "streak": 0,
+            "mode": "beginner",
+            "date": "2026-03-24T14:07:11+01:00"
+        },
+        {
+            "name": "Explorer",
+            "score": 0,
+            "correct": 0,
+            "streak": 0,
+            "mode": "beginner",
+            "date": "2026-03-24T14:07:40+01:00"
+        }
+    ],
     "intermediate": [
         {
             "name": "Reshmi",
@@ -8,6 +25,22 @@
             "streak": 2,
             "mode": "intermediate",
             "date": "2026-03-23T21:24:45+01:00"
+        },
+        {
+            "name": "Explorer",
+            "score": 0,
+            "correct": 0,
+            "streak": 0,
+            "mode": "intermediate",
+            "date": "2026-03-24T13:36:34+01:00"
+        },
+        {
+            "name": "Explorer",
+            "score": 0,
+            "correct": 0,
+            "streak": 0,
+            "mode": "intermediate",
+            "date": "2026-03-24T14:06:48+01:00"
         }
     ],
     "challenge": [
