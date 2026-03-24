@@ -423,11 +423,16 @@ function initImageSequence() {
   // Auto-play animation on the splash screen (since it's a single viewport, no scroll)
   let autoFrame = 0;
   let autoDir = 1;
-  function autoAnimate() {
-    // Only auto-animate if user hasn't scrolled (splash screen visible)
-    const splash = $('splash-screen');
-    if (!splash || !splash.classList.contains('active')) return;
+  let autoAnimating = false;
 
+  function autoAnimate() {
+    const splash = $('splash-screen');
+    if (!splash || !splash.classList.contains('active')) {
+      autoAnimating = false;
+      return;
+    }
+
+    autoAnimating = true;
     autoFrame += autoDir;
     if (autoFrame >= SEQ_TOTAL_FRAMES - 1) autoDir = -1;
     if (autoFrame <= 0) autoDir = 1;
@@ -436,11 +441,19 @@ function initImageSequence() {
     seqCurrentFrame = autoFrame;
     setTimeout(() => requestAnimationFrame(autoAnimate), 50);
   }
+
+  function startAutoAnimation() {
+    if (autoAnimating) return;
+    requestAnimationFrame(autoAnimate);
+  }
+
+  window.startSplashAnimation = startAutoAnimation;
+
   // Start auto-animation after images load
   const checkReady = setInterval(() => {
-    if (seqLoaded >= 10) { // Start after first 10 frames load
+    if (seqLoaded >= 10) {
       clearInterval(checkReady);
-      autoAnimate();
+      startAutoAnimation();
     }
   }, 200);
 }
@@ -452,7 +465,12 @@ function initImageSequence() {
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   $(id).classList.add("active");
-  if(id==='splash-screen') window.scrollTo(0,0);
+  if (id === 'splash-screen') {
+    window.scrollTo(0, 0);
+    if (typeof window.startSplashAnimation === 'function') {
+      window.startSplashAnimation();
+    }
+  }
 }
 
 const COLORS = {
@@ -975,6 +993,7 @@ function endRound() {
   saveScoreLocal();
   clearResumeState();
 }
+
 
 
 
