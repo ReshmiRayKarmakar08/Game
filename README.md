@@ -75,6 +75,10 @@ Hints show the **Keep-Change-Flip** method with a mini visual.
 - 📱 Responsive design
 
 ---
+## Photo : 
+
+<img width="1915" height="1036" alt="image" src="https://github.com/user-attachments/assets/6a1b0b8b-7374-45fa-9587-26e5e1478a3b" />
+
 
 ## 🔧 API Reference
 
