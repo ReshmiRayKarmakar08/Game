@@ -1,6 +1,6 @@
 /**
  * FractionQuest — script.js
- * Comprehensive logic for Landing Page animations & Game UI
+ * Comprehensive logic for Professional UI, Theme Toggling, and Realistic Pizza Rendering
  */
 
 "use strict";
@@ -49,7 +49,7 @@ const QUESTION_BANKS = {
 };
 
 const BADGES = [
-  { id: "first_correct", icon: "<span class='material-symbols-rounded' style='color:#ffd166;'>star</span>", name: "First Star!", condition: s => s.totalCorrect >= 1 },
+  { id: "first_correct", icon: "<span class='material-symbols-rounded' style='color:#ffd166;'>grade</span>", name: "First Star!", condition: s => s.totalCorrect >= 1 },
   { id: "three_streak",  icon: "<span class='material-symbols-rounded' style='color:#ff6b35;'>local_fire_department</span>", name: "On Fire!",   condition: s => s.bestStreak >= 3 },
   { id: "five_streak",   icon: "<span class='material-symbols-rounded' style='color:#ef4444;'>bolt</span>", name: "Unstoppable!", condition: s => s.bestStreak >= 5 },
   { id: "half_done",     icon: "<span class='material-symbols-rounded' style='color:#2ec4b6;'>track_changes</span>", name: "Halfway Hero", condition: s => s.totalCorrect >= 5 },
@@ -104,123 +104,124 @@ const DOM = {
 const ctx = DOM.canvas ? DOM.canvas.getContext("2d") : null;
 
 /* ============================================================
-   SECTION 3: LANDING PAGE ANIMATIONS
+   SECTION 3: THEME & UI LOGIC
    ============================================================ */
 
-/** Initialize Particle Background */
-function initParticles() {
-  const canvas = $("particle-canvas");
-  if(!canvas) return;
-  const cx = canvas.getContext("2d");
-  let w = canvas.width = window.innerWidth;
-  let h = canvas.height = window.innerHeight;
-  const particles = [];
-
-  for(let i=0; i<40; i++) {
-    particles.push({
-      x: Math.random() * w, y: Math.random() * h,
-      vx: (Math.random() - 0.5) * 0.5, vy: (Math.random() - 0.5) * 0.5,
-      r: Math.random() * 3 + 1, alpha: Math.random() * 0.5 + 0.1
+function initTheme() {
+  const saved = localStorage.getItem('fq_theme') || 'light';
+  if (saved === 'dark') document.body.classList.add('dark-theme');
+  
+  [$('theme-toggle-landing'), $('theme-toggle-game')].forEach(btn => {
+    if(!btn) return;
+    btn.addEventListener('click', () => {
+      document.body.classList.toggle('dark-theme');
+      const current = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+      localStorage.setItem('fq_theme', current);
     });
-  }
-
-  function render() {
-    cx.clearRect(0,0,w,h);
-    particles.forEach(p => {
-      p.x += p.vx; p.y += p.vy;
-      if(p.x<0 || p.x>w) p.vx *= -1;
-      if(p.y<0 || p.y>h) p.vy *= -1;
-      cx.beginPath(); cx.arc(p.x, p.y, p.r, 0, Math.PI*2);
-      cx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`; cx.fill();
-    });
-    requestAnimationFrame(render);
-  }
-  render();
-  window.addEventListener('resize', () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; });
-}
-
-/** Scroll Reveal Logic */
-function initScrollReveal() {
-  const elements = document.querySelectorAll('.scroll-reveal');
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if(entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        if(entry.target.classList.contains('reward-card')) animateCounters();
-        if(entry.target.id === 'demo-section' || entry.target.closest('.demo-section')) {
-          if(!window.demoStarted) { window.demoStarted = true; animateDemoCanvas(); }
-        }
-      }
-    });
-  }, { threshold: 0.1 });
-  elements.forEach(el => observer.observe(el));
-}
-
-/** Counter Animation */
-let countersAnimated = false;
-function animateCounters() {
-  if (countersAnimated) return;
-  countersAnimated = true;
-  document.querySelectorAll('.reward-counter').forEach(counter => {
-    const target = +counter.getAttribute('data-target');
-    const updateCount = () => {
-      const c = +counter.innerText;
-      const inc = target / 40;
-      if (c < target) {
-        counter.innerText = Math.ceil(c + inc);
-        setTimeout(updateCount, 40);
-      } else {
-        counter.innerText = target + (target > 500 ? "+" : "");
-      }
-    };
-    updateCount();
   });
 }
 
-/** Animated Demo Canvas */
-function animateDemoCanvas() {
-  const canvas = $("demo-canvas");
-  if(!canvas) return;
-  const dcx = canvas.getContext("2d");
-  let progress = 0;
-  function draw() {
-    dcx.clearRect(0, 0, 600, 320);
-    dcx.beginPath(); dcx.arc(150, 160, 100, 0, Math.PI*2); dcx.fillStyle = "#2a214d"; dcx.fill();
-    for(let i=0; i<3; i++) {
-      const angle = -Math.PI/2 + (i*Math.PI/2);
-      dcx.beginPath(); dcx.moveTo(150, 160); dcx.arc(150,160, 100, angle, angle + Math.PI/2);
-      dcx.fillStyle = "rgba(108,99,255, 0.4)"; dcx.fill();
-      dcx.strokeStyle = "rgba(255,255,255,0.4)"; dcx.lineWidth=2; dcx.stroke();
-    }
-    for(let i=0; i<3; i++) {
-        const animState = Math.min(1, Math.max(0, (progress - i*0.3)/0.4));
-        const easeIdx = 1 - Math.pow(1 - animState, 3);
-        const angle = -Math.PI/2 + (i*Math.PI/2);
-        const tx = 380 + (i*80); const ty = 160;
-        const cxValue = 150 + (tx - 150) * easeIdx; const cyValue = 160 + (ty - 160) * easeIdx;
-        dcx.beginPath(); dcx.moveTo(cxValue, cyValue); dcx.arc(cxValue, cyValue, 90, angle, angle + Math.PI/2);
-        dcx.fillStyle = "rgba(255,107,53,0.9)"; dcx.fill();
-        dcx.strokeStyle = "#fff"; dcx.lineWidth = 3; dcx.stroke();
-        if (easeIdx > 0.8) {
-            dcx.fillStyle = "#fff"; dcx.font = "bold 24px Fredoka One"; dcx.textAlign="center"; dcx.textBaseline="middle";
-            const mx = cxValue + Math.cos(angle + Math.PI/4)*45; const my = cyValue + Math.sin(angle + Math.PI/4)*45;
-            dcx.fillText(i+1, mx, my);
-        }
-    }
-    progress += 0.005;
-    if(progress > 2.5) progress = 0;
-    requestAnimationFrame(draw);
-  }
-  draw();
+function initModals() {
+  const setupModal = (id, closeId, openId) => {
+    const m = $(id), c = $(closeId), o = $(openId);
+    if(m && c) c.addEventListener('click', () => m.style.display = 'none');
+    if(m && o) o.addEventListener('click', (e) => { e.preventDefault(); m.style.display = 'flex'; });
+  };
+  setupModal('about-modal', 'about-close', 'footer-about');
+  setupModal('settings-modal', 'settings-close', 'footer-settings');
+  setupModal('leaderboard-modal', 'lb-close', 'footer-leaderboard');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  initParticles();
-  initScrollReveal();
-});
+/* ============================================================
+   SECTION 4: IMAGE SEQUENCE SCROLL ANIMATION
+   ============================================================ */
+
+const SEQ_TOTAL_FRAMES = 200;
+const seqImages = [];
+let seqLoaded = 0;
+let seqCurrentFrame = 0;
+
+function initImageSequence() {
+  const canvas = $('seq-canvas');
+  if (!canvas) return;
+  const cx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    renderFrame(seqCurrentFrame);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // Preload all frames
+  for (let i = 1; i <= SEQ_TOTAL_FRAMES; i++) {
+    const img = new Image();
+    img.src = `imagesequence/ezgif-frame-${String(i).padStart(3, '0')}.jpg`;
+    img.onload = () => {
+      seqLoaded++;
+      // Draw first frame as soon as it's ready
+      if (i === 1) renderFrame(0);
+    };
+    seqImages.push(img);
+  }
+
+  function renderFrame(index) {
+    const img = seqImages[index];
+    if (!img || !img.complete) return;
+    cx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Cover fit (like background-size: cover)
+    const cw = canvas.width, ch = canvas.height;
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    const scale = Math.max(cw / iw, ch / ih);
+    const sw = iw * scale, sh = ih * scale;
+    cx.drawImage(img, (cw - sw) / 2, (ch - sh) / 2, sw, sh);
+
+    // Dark overlay for text readability
+    cx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    cx.fillRect(0, 0, cw, ch);
+  }
+
+  // Scroll-driven playback
+  window.addEventListener('scroll', () => {
+    const scrollTop = window.scrollY;
+    const maxScroll = document.body.scrollHeight - window.innerHeight;
+    const scrollFraction = Math.min(scrollTop / Math.max(maxScroll, 1), 1);
+    const frameIndex = Math.min(Math.floor(scrollFraction * SEQ_TOTAL_FRAMES), SEQ_TOTAL_FRAMES - 1);
+    if (frameIndex !== seqCurrentFrame) {
+      seqCurrentFrame = frameIndex;
+      requestAnimationFrame(() => renderFrame(seqCurrentFrame));
+    }
+  });
+
+  // Auto-play animation on the splash screen (since it's a single viewport, no scroll)
+  let autoFrame = 0;
+  let autoDir = 1;
+  function autoAnimate() {
+    // Only auto-animate if user hasn't scrolled (splash screen visible)
+    const splash = $('splash-screen');
+    if (!splash || !splash.classList.contains('active')) return;
+
+    autoFrame += autoDir;
+    if (autoFrame >= SEQ_TOTAL_FRAMES - 1) autoDir = -1;
+    if (autoFrame <= 0) autoDir = 1;
+
+    renderFrame(autoFrame);
+    seqCurrentFrame = autoFrame;
+    setTimeout(() => requestAnimationFrame(autoAnimate), 50);
+  }
+  // Start auto-animation after images load
+  const checkReady = setInterval(() => {
+    if (seqLoaded >= 10) { // Start after first 10 frames load
+      clearInterval(checkReady);
+      autoAnimate();
+    }
+  }, 200);
+}
 
 /* ============================================================
-   SECTION 4: GAME LOGIC
+   SECTION 5: GAME LOGIC & REALISTIC PIZZA
    ============================================================ */
 
 function showScreen(id) {
@@ -229,95 +230,148 @@ function showScreen(id) {
   if(id==='splash-screen') window.scrollTo(0,0);
 }
 
-function fracStr(n, d) { return d === 1 ? `${n}` : `${n}/${d}`; }
-function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
-
 const COLORS = {
   dividend: ["#6c63ff","#a78bfa","#818cf8","#7c3aed","#4f46e5","#8b5cf6","#9333ea","#c084fc","#7e22ce","#6d28d9"],
   divisor:  ["#ff6b35","#fb923c","#f97316","#ea580c","#dc2626","#ef4444","#f87171","#fca5a5","#b91c1c","#c2410c"],
-  bg:       "#fafafe", grid: "#e2e0f0",
+  bg:       "#fafafe", grid: "rgba(0,0,0,0.05)",
 };
 
-function drawCircleFraction(cx, cy, r, n, d, filled, isDiv = false) {
+/** Draw a professional pizza with toppings and crust */
+function drawRealPizza(cx, cy, r, n, d, filled, isDiv = false) {
+  // 1. Crust
+  const crustGrad = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r);
+  crustGrad.addColorStop(0, "#f3d29c");
+  crustGrad.addColorStop(1, "#c68642");
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = isDiv ? "#fffcf5" : "#f0edff"; ctx.fill();
-  ctx.strokeStyle = COLORS.grid; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = crustGrad; ctx.fill();
+  ctx.strokeStyle = "#8d5524"; ctx.lineWidth = 2; ctx.stroke();
 
+  // 2. Base Cheese
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.88, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffda6c"; ctx.fill();
+
+  // 3. Toppings Area (Slices)
   const colorArr = isDiv ? COLORS.divisor : COLORS.dividend;
   for (let i = 0; i < (filled ? n : 0); i++) {
     const start = -Math.PI / 2 + (i / d) * Math.PI * 2;
     const end   = -Math.PI / 2 + ((i + 1) / d) * Math.PI * 2;
-    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, start, end); ctx.closePath();
-    ctx.fillStyle = colorArr[i % colorArr.length] + "dd"; ctx.fill();
-    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r * 0.88, start, end); ctx.closePath();
+    ctx.fillStyle = colorArr[i % colorArr.length] + "44"; // Translucent overlay
+    ctx.fill();
+    
+    // Pepperoni circles randomly in slice
+    ctx.save();
+    ctx.clip();
+    for(let j=0; j<3; j++) {
+      const dist = (0.3 + Math.random()*0.5) * r;
+      const angle = start + Math.random()*(end-start);
+      const px = cx + Math.cos(angle)*dist;
+      const py = cy + Math.sin(angle)*dist;
+      ctx.beginPath(); ctx.arc(px, py, r*0.08, 0, Math.PI*2);
+      ctx.fillStyle = "#d53d0d"; ctx.fill();
+      ctx.strokeStyle = "#a52a2a"; ctx.lineWidth = 1; ctx.stroke();
+    }
+    ctx.restore();
   }
 
+  // 4. Grid Lines
   for (let i = 0; i < d; i++) {
     const angle = -Math.PI / 2 + (i / d) * Math.PI * 2;
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
-    ctx.strokeStyle = "rgba(255,255,255,0.6)"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.strokeStyle = "rgba(141, 85, 36, 0.4)"; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+}
+
+/** Draw a professional bar visual model */
+function drawBar(cx, cy, w, h, n, d, filled, isDiv = false) {
+  const colorArr = isDiv ? COLORS.divisor : COLORS.dividend;
+  const unitW = w / d;
+  
+  // Background
+  ctx.fillStyle = "var(--c-surface-soft)";
+  ctx.fillRect(cx, cy, w, h);
+  ctx.strokeStyle = "var(--c-border)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(cx, cy, w, h);
+
+  // Filled parts
+  for (let i = 0; i < (filled ? n : 0); i++) {
+    ctx.fillStyle = colorArr[i % colorArr.length] + "ee";
+    ctx.fillRect(cx + i * unitW, cy, unitW, h);
+    ctx.strokeStyle = "#fff";
+    ctx.strokeRect(cx + i * unitW, cy, unitW, h);
   }
 
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.strokeStyle = isDiv ? "#ff6b35" : "#6c63ff"; ctx.lineWidth = 3; ctx.stroke();
+  // Grid lines
+  ctx.beginPath();
+  for (let i = 1; i < d; i++) {
+    ctx.moveTo(cx + i * unitW, cy);
+    ctx.lineTo(cx + i * unitW, cy + h);
+  }
+  ctx.strokeStyle = "rgba(0,0,0,0.1)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
 }
 
 function drawPizza(dividend, divisor, step, placed) {
   const W = DOM.canvas.width, H = DOM.canvas.height;
   ctx.clearRect(0, 0, W, H);
-
   const [dN, dD] = dividend; const [vN, vD] = divisor;
   const cxVal = W * 0.28, cyVal = H * 0.5, rVal = Math.min(H * 0.38, W * 0.22);
-  drawCircleFraction(cxVal, cyVal, rVal, dN, dD, step >= 1);
-
-  ctx.fillStyle = "#1a1a2e"; ctx.font = "bold 14px Nunito, sans-serif"; ctx.textAlign = "center";
-  ctx.fillText(`Dividend: ${fracStr(dN, dD)}`, cxVal, cyVal + rVal + 22);
+  drawRealPizza(cxVal, cyVal, rVal, dN, dD, step >= 1);
+  ctx.fillStyle = "var(--c-text-main)"; ctx.font = "bold 14px Nunito"; ctx.textAlign = "center";
+  ctx.fillText(`Dividend: ${dN}/${dD}`, cxVal, cyVal + rVal + 26);
 
   if (step < 2) return;
-
   const cx2 = W * 0.72, cy2 = H * 0.5;
-  drawCircleFraction(cx2, cy2, rVal * 0.7, vN, vD, true, true);
-  ctx.fillStyle = "#1a1a2e"; ctx.font = "bold 13px Nunito, sans-serif"; ctx.textAlign = "center";
-  ctx.fillText(`Divisor: ${fracStr(vN, vD)}`, cx2, cy2 + rVal * 0.7 + 20);
+  drawRealPizza(cx2, cy2, rVal * 0.7, vN, vD, true, true);
+  ctx.fillStyle = "var(--c-text-main)"; ctx.fillText(`Divisor: ${vN}/${vD}`, cx2, cy2 + rVal * 0.7 + 24);
 
   if (step >= 2 && placed > 0) {
     for (let i = 0; i < placed; i++) {
-      const startAngle = -Math.PI / 2 + (i * vN / vD) * 2 * Math.PI;
-      const endAngle   = startAngle + (vN / vD) * 2 * Math.PI;
-      ctx.beginPath(); ctx.moveTo(cxVal, cyVal); ctx.arc(cxVal, cyVal, rVal, startAngle, endAngle); ctx.closePath();
-      ctx.fillStyle = COLORS.divisor[i % COLORS.divisor.length] + "aa"; ctx.fill();
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
-
-      const midAngle = (startAngle + endAngle) / 2;
-      const lx = cxVal + Math.cos(midAngle) * rVal * 0.6; const ly = cyVal + Math.sin(midAngle) * rVal * 0.6;
-      ctx.fillStyle = "#fff"; ctx.font = "bold 18px Fredoka One, cursive"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(i + 1, lx, ly);
+        const startAngle = -Math.PI / 2 + (i * vN / vD) * 2 * Math.PI;
+        const endAngle   = startAngle + (vN / vD) * 2 * Math.PI;
+        ctx.beginPath(); ctx.moveTo(cxVal, cyVal); ctx.arc(cxVal, cyVal, rVal * 0.9, startAngle, endAngle); ctx.closePath();
+        ctx.fillStyle = "rgba(46, 196, 182, 0.4)"; ctx.fill();
+        ctx.strokeStyle = "#fff"; ctx.stroke();
+        const mid = (startAngle+endAngle)/2;
+        ctx.fillStyle = "#fff"; ctx.font = "bold 20px Fredoka One";
+        ctx.fillText(i+1, cxVal + Math.cos(mid)*rVal*0.6, cyVal + Math.sin(mid)*rVal*0.6);
     }
-  }
-
-  if (step >= 3) {
-    ctx.fillStyle = "#6c63ff"; ctx.font = "bold 16px Nunito, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
-    ctx.fillText(`Count: ${placed} group${placed !== 1 ? "s" : ""}`, cxVal, 24);
   }
 }
 
 function redraw() {
   if (!State.q || !ctx) return;
-  if(State.visualMode==='pizza') drawPizza(State.q.dividend, State.q.divisor, State.step, State.placedUnits);
-}
+  const q = State.q;
+  if (State.visualMode === 'pizza') {
+    drawPizza(q.dividend, q.divisor, State.step, State.placedUnits);
+  } else {
+    const W = DOM.canvas.width, H = DOM.canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    drawBar(W*0.1, H*0.2, W*0.8, 60, q.dividend[0], q.dividend[1], State.step >= 1);
+    ctx.fillStyle = "var(--c-text-main)"; ctx.font = "bold 14px Nunito"; ctx.textAlign = "center";
+    ctx.fillText(`Dividend: ${q.dividend[0]}/${q.dividend[1]}`, W*0.5, H*0.2 + 85);
 
-function buildDivisorTray() {
-  const q = State.q; DOM.trayUnits.innerHTML = "";
-  const ans = Math.ceil((q.dividend[0]*q.divisor[1])/(q.dividend[1]*q.divisor[0]));
-  const count = Math.min(ans + 2, 12);
+    if (State.step >= 2) {
+      drawBar(W*0.1, H*0.55, W*0.4, 40, q.divisor[0], q.divisor[1], true, true);
+      ctx.fillStyle = "var(--c-text-main)"; ctx.fillText(`Divisor: ${q.divisor[0]}/${q.divisor[1]}`, W*0.3, H*0.55 + 65);
+      
+      if (State.placedUnits > 0) {
+        const unitW = (W*0.8) / q.dividend[1];
+        const divisorW = (W*0.8) * (q.divisor[0]/q.divisor[1]) / (q.dividend[0]/q.dividend[1]); // Wait, simple scale
+        const scale = (W*0.8) / (q.dividend[0]/q.dividend[1]);
+        const dw = scale * (q.divisor[0]/q.divisor[1]);
 
-  for (let i = 0; i < count; i++) {
-    const chip = document.createElement("div"); chip.className = "unit-chip pop-in"; chip.style.animationDelay = `${i * 0.04}s`; chip.dataset.index = i;
-    chip.innerHTML = `<span>${fracStr(q.divisor[0], q.divisor[1])}</span><span class="chip-num">#${i + 1}</span>`;
-    chip.setAttribute("draggable", true);
-    chip.addEventListener("dragstart", e => { e.dataTransfer.effectAllowed = "move"; draggingChip = e.currentTarget; });
-    chip.addEventListener("click", () => placeUnit(chip, i));
-    DOM.trayUnits.appendChild(chip);
+        for(let i=0; i<State.placedUnits; i++) {
+          ctx.fillStyle = "rgba(46, 196, 182, 0.4)";
+          ctx.fillRect(W*0.1 + i*dw, H*0.2, dw, 60);
+          ctx.strokeStyle = "#fff"; ctx.strokeRect(W*0.1 + i*dw, H*0.2, dw, 60);
+          ctx.fillStyle = "#fff"; ctx.font = "bold 18px Fredoka One";
+          ctx.fillText(i+1, W*0.1 + i*dw + dw/2, H*0.2 + 35);
+        }
+      }
+    }
   }
 }
 
@@ -327,142 +381,98 @@ function updateStepIndicator(as) { DOM.steps.forEach(s => { const n = parseInt(s
 function loadQuestion() {
   const q = State.q; if (!q) return endRound();
   State.step = 1; State.placedUnits = 0;
-  DOM.qDividend.textContent = fracStr(q.dividend[0], q.dividend[1]); DOM.qDivisor.textContent = fracStr(q.divisor[0], q.divisor[1]);
+  DOM.qDividend.textContent = `${q.dividend[0]}/${q.dividend[1]}`; DOM.qDivisor.textContent = `${q.divisor[0]}/${q.divisor[1]}`;
   DOM.qAnswerSlot.textContent = "?"; DOM.qAnswerSlot.classList.remove("filled");
-  DOM.eli5Divisor.textContent = fracStr(q.divisor[0], q.divisor[1]); DOM.eli5Dividend.textContent = fracStr(q.dividend[0], q.dividend[1]);
-  DOM.trayUnitLabel.textContent = fracStr(q.divisor[0], q.divisor[1]);
-  DOM.btnStepNext.style.display = "inline-flex"; DOM.btnStepNext.textContent = "Next Step →";
-  DOM.btnCheck.style.display = "none"; DOM.answerSection.style.display = "none"; DOM.feedbackBanner.style.display = "none";
+  DOM.eli5Divisor.textContent = `${q.divisor[0]}/${q.divisor[1]}`; DOM.eli5Dividend.textContent = `${q.dividend[0]}/${q.dividend[1]}`;
+  DOM.trayUnitLabel.textContent = `${q.divisor[0]}/${q.divisor[1]}`;
+  DOM.btnStepNext.style.display = "inline-flex"; DOM.btnCheck.style.display = "none"; DOM.answerSection.style.display = "none"; DOM.feedbackBanner.style.display = "none";
   DOM.answerInput.value = ""; DOM.ansNum.value = ""; DOM.ansDen.value = ""; DOM.fracAnsRow.style.display = "none";
   updateStepIndicator(1); buildDivisorTray(); updateProgress(); redraw();
 }
 
-function nextStep() {
-  State.step++; updateStepIndicator(State.step);
-  if (State.step === 2) { DOM.btnStepNext.textContent = "I've counted! →"; redraw(); pulseCanvas(); }
-  else if (State.step === 3) { DOM.btnStepNext.textContent = "Done counting →"; redraw(); pulseCanvas(); }
-  else if (State.step === 4) {
-    DOM.btnStepNext.style.display = "none"; DOM.answerSection.style.display = "flex"; DOM.answerSection.classList.add("fade-in");
-    if (State.mode === "challenge" && typeof State.q.answer === "string") DOM.fracAnsRow.style.display = "flex";
-    redraw();
-  }
-}
-
-let draggingChip = null;
-if(DOM.canvas) {
-    DOM.canvas.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; });
-    DOM.canvas.addEventListener("drop", e => {
-    e.preventDefault();
-    if (draggingChip && !draggingChip.classList.contains("placed")) placeUnit(draggingChip, parseInt(draggingChip.dataset.index));
+function buildDivisorTray() {
+  DOM.trayUnits.innerHTML = "";
+  const ans = Math.ceil((State.q.dividend[0]*State.q.divisor[1])/(State.q.dividend[1]*State.q.divisor[0]));
+  for (let i = 0; i < Math.min(ans + 2, 12); i++) {
+    const chip = document.createElement("div"); chip.className = "unit-chip pop-in"; chip.style.animationDelay = `${i * 0.04}s`;
+    chip.innerHTML = `<span>${State.q.divisor[0]}/${State.q.divisor[1]}</span>`;
+    chip.addEventListener("click", () => {
+        if (State.step < 2) return;
+        chip.classList.add("placed"); State.placedUnits++;
+        if (State.step < 3) { State.step = 3; updateStepIndicator(3); }
+        if (State.placedUnits >= Math.floor(ans)) DOM.btnCheck.style.display = "inline-flex";
+        redraw();
     });
-}
-
-function placeUnit(chip, index) {
-  if (chip.classList.contains("placed") || State.step < 2) { if (State.step < 2) pulseCanvas(); return; }
-  const ans = (State.q.dividend[0] * State.q.divisor[1]) / (State.q.dividend[1] * State.q.divisor[0]);
-  if (State.placedUnits >= Math.floor(ans) + 0.5) return;
-  State.placedUnits++; chip.classList.add("placed");
-  if (State.step < 3) { State.step = 3; updateStepIndicator(3); }
-  redraw();
-  if (State.placedUnits >= Math.floor(ans)) DOM.btnCheck.style.display = "inline-flex";
-}
-
-function updateLives() { DOM.hdrLives.innerHTML = "<span class='material-symbols-rounded' style='color:#ef4444; font-variation-settings: \"FILL\" 1;'>favorite</span>".repeat(State.lives) + "<span class='material-symbols-rounded' style='color:#ccc; font-variation-settings: \"FILL\" 0;'>favorite</span>".repeat(3 - State.lives); }
-function updateLevel() { State.level = Math.floor(State.score / 500) + 1; DOM.hdrLevel.textContent = State.level; DOM.hdrAvatar.innerHTML = AVATARS[Math.min(State.level-1, 5)]; }
-
-function showFeedback(ok, msg, expl) {
-  DOM.feedbackBanner.style.display = "flex"; DOM.feedbackBanner.className = `feedback-banner ${ok?"correct":"wrong"}`;
-  DOM.feedbackIcon.innerHTML = ok ? "<span class='material-symbols-rounded' style='color:#10b981;'>celebration</span>" : "<span class='material-symbols-rounded' style='color:#3b82f6;'>fitness_center</span>"; DOM.feedbackText.textContent = msg; DOM.feedbackExpl.innerHTML = `<span class='material-symbols-rounded' style='font-size:16px;'>chat</span> ${expl}`;
-  DOM.answerSection.style.display = "none"; DOM.btnStepNext.style.display = "none";
-}
-
-function checkBadges() {
-  BADGES.forEach(b => {
-    if (!State.badgesEarned.includes(b.id) && b.condition(State)) {
-      State.badgesEarned.push(b.id);
-      DOM.toastIcon.innerHTML = b.icon; DOM.toastMsg.textContent = b.name; DOM.badgeToast.style.display = "flex";
-      setTimeout(() => DOM.badgeToast.style.display = "none", 3200);
-    }
-  });
+    DOM.trayUnits.appendChild(chip);
+  }
 }
 
 function checkAnswer() {
   const q = State.q; let ok = false, usr;
   if (State.mode === "challenge" && typeof q.answer === "string") {
-    const un = parseInt(DOM.ansNum.value) || 0, ud = parseInt(DOM.ansDen.value) || 1; usr = `${un}/${ud}`;
-    const qg = gcd(q.answerNum, q.answerDen), ug = gcd(un, ud);
-    ok = (q.answerNum / qg === un / ug) && (q.answerDen / qg === ud / ug);
+    const un = parseInt(DOM.ansNum.value), ud = parseInt(DOM.ansDen.value);
+    ok = (un/ud === q.answerNum/q.answerDen); usr = `${un}/${ud}`;
   } else {
     usr = parseFloat(DOM.answerInput.value);
-    const corr = typeof q.answer === "string" ? q.answerNum / q.answerDen : q.answer;
-    ok = Math.abs(usr - corr) < 0.01;
+    ok = Math.abs(usr - (typeof q.answer==='string'?q.answerNum/q.answerDen:q.answer)) < 0.01;
   }
   if (ok) {
-    const earn = (State.mode === "challenge" ? 150 : State.mode === "intermediate" ? 100 : 75) + (State.streak >= 2 ? State.streak*20 : 0);
-    State.score += earn; State.streak++; State.bestStreak = Math.max(State.bestStreak, State.streak); State.totalCorrect++;
-    DOM.hdrScore.textContent = State.score; DOM.qAnswerSlot.textContent = q.answer; DOM.qAnswerSlot.classList.add("filled");
-    showFeedback(true, `+${earn} pts${State.streak>=2 ? ` (<span class='material-symbols-rounded' style='color:#ff6b35;'>local_fire_department</span> ×${State.streak})` : ""}`, q.explanation); checkBadges();
-    State.step = 4; State.placedUnits = Math.round((q.dividend[0]*q.divisor[1])/(q.dividend[1]*q.divisor[0])); redraw(); fireConfetti(); updateLives(); updateLevel();
+    State.score += 100; State.streak++; State.totalCorrect++; updateLevel(); showFeedback(true, "+100 pts!", q.explanation); fireConfetti();
   } else {
-    State.streak = 0; State.totalWrong++; State.lives = Math.max(0, State.lives - 1);
-    showFeedback(false, `Not quite! You said ${usr}`, q.explanation); updateLives();
-    DOM.answerInput.classList.add("shake"); setTimeout(() => DOM.answerInput.classList.remove("shake"), 500);
-    if (State.lives === 0) setTimeout(endRound, 2000);
+    State.lives--; State.streak = 0; showFeedback(false, "Try again!", q.explanation); updateLives();
+    if(State.lives <= 0) setTimeout(endRound, 2000);
   }
 }
 
-function nextQuestion() {
-  State.currentQ++;
-  if (State.currentQ >= State.questions.length) endRound();
-  else loadQuestion();
+function showFeedback(ok, msg, expl) {
+  DOM.feedbackBanner.style.display = "flex"; DOM.feedbackBanner.className = `feedback-banner ${ok?"correct":"wrong"}`;
+  DOM.feedbackIcon.innerHTML = ok ? "<span class='material-symbols-rounded' style='color:#10b981;'>celebration</span>" : "<span class='material-symbols-rounded' style='color:#ef4444;'>error</span>";
+  DOM.feedbackText.textContent = msg; DOM.feedbackExpl.textContent = expl;
+  DOM.answerSection.style.display = "none"; redraw();
 }
 
-function endRound() {
-  const pct = State.totalCorrect / State.questions.length;
-  showScreen("results-screen");
-  DOM.resultsTrophy.innerHTML = pct === 1 ? "<span class='material-symbols-rounded' style='color:#fbbf24;'>emoji_events</span>" : pct >= 0.7 ? "<span class='material-symbols-rounded' style='color:#fcd34d;'>workspace_premium</span>" : pct >= 0.5 ? "<span class='material-symbols-rounded' style='color:#94a3b8;'>workspace_premium</span>" : "<span class='material-symbols-rounded' style='color:#6c63ff;'>sports_esports</span>";
-  DOM.resultsTitle.textContent = pct === 1 ? "Perfect Score!" : pct >= 0.7 ? "Great Job!" : pct >= 0.5 ? "Good Effort!" : "Keep Practicing!";
-  DOM.resScore.textContent = State.score; DOM.resCorrect.textContent = `${State.totalCorrect}/${State.questions.length}`; DOM.resStreak.textContent = State.bestStreak;
-  DOM.badgesEarned.innerHTML = "";
-  State.badgesEarned.forEach((id, idx) => {
-    const b = BADGES.find(x => x.id === id); if(!b) return;
-    const el = document.createElement("div"); el.className = "badge-item"; el.style.animationDelay = `${idx*0.1}s`;
-    el.innerHTML = `<span>${b.icon}</span><span>${b.name}</span>`; DOM.badgesEarned.appendChild(el);
-  });
-  saveScoreLocal(); fireConfetti(true);
-}
+function updateLives() { DOM.hdrLives.innerHTML = "<span class='material-symbols-rounded' style='color:#ef4444; font-variation-settings: \"FILL\" 1;'>favorite</span>".repeat(State.lives) + "<span class='material-symbols-rounded' style='color:#ccc;'>favorite</span>".repeat(3 - State.lives); }
+function updateLevel() { State.level = Math.floor(State.score / 500) + 1; DOM.hdrLevel.textContent = State.level; DOM.hdrAvatar.innerHTML = AVATARS[Math.min(State.level-1, 5)]; DOM.hdrScore.textContent = State.score; }
 
-function saveScoreLocal() {
-  const key = `fq_scores_${State.mode}`; const ex = JSON.parse(localStorage.getItem(key) || "[]");
-  ex.push({ name: State.playerName, score: State.score, correct: State.totalCorrect, streak: State.bestStreak });
+/* ============================================================
+   SECTION 6: BACKEND & SCORES
+   ============================================================ */
+
+async function saveScoreLocal() {
+  const data = { action: 'save_score', name: State.playerName, score: State.score, mode: State.mode, correct: State.totalCorrect, streak: State.bestStreak };
+  console.log("Saving score:", data);
+  // Optional PHP backend call
+  try {
+    await fetch('backend.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+  } catch(e) { console.warn("Backend save failed, using local fallback."); }
+  
+  const key = `fq_scores_${State.mode}`;
+  const ex = JSON.parse(localStorage.getItem(key) || "[]");
+  ex.push(data);
   localStorage.setItem(key, JSON.stringify(ex.sort((a,b)=>b.score-a.score).slice(0, 15)));
 }
-function renderLeaderboard(mode) {
-  const s = JSON.parse(localStorage.getItem(`fq_scores_${mode}`) || "[]");
-  if(!s.length) { DOM.lbList.innerHTML = `<div class="lb-loading">No scores yet!</div>`; return; }
-  DOM.lbList.innerHTML = s.map((x,i)=>`
+
+async function renderLeaderboard(mode) {
+  let scores = [];
+  try {
+    const res = await fetch(`backend.php?action=get_scores&mode=${mode}`);
+    scores = await res.json();
+  } catch(e) {
+    scores = JSON.parse(localStorage.getItem(`fq_scores_${mode}`) || "[]");
+  }
+  
+  DOM.lbList.innerHTML = scores.length ? scores.map((x,i)=>`
     <div class="lb-entry">
-      <span class="lb-rank ${['gold','silver','bronze'][i]||''} ">${['<span class="material-symbols-rounded" style="color:#fcd34d;">workspace_premium</span>','<span class="material-symbols-rounded" style="color:#94a3b8;">workspace_premium</span>','<span class="material-symbols-rounded" style="color:#b45309;">workspace_premium</span>'][i]||'#'+(i+1)}</span>
-      <span class="lb-name">${x.name}</span><span class="lb-score"><span class='material-symbols-rounded' style='color:#ffd166;'>star</span> ${x.score}</span>
-    </div>`).join("");
+      <span class="lb-rank ${i<3?['gold','silver','bronze'][i]:''}">${i+1}</span>
+      <span class="lb-name">${x.name}</span>
+      <span class="lb-score">${x.score}</span>
+    </div>`).join("") : `<div class="lb-loading">No scores yet!</div>`;
 }
 
-function startGame() {
-  const n = (DOM.playerName?.value || "").trim(); State.playerName = n || "Explorer";
-  State.score = 0; State.lives = 3; State.streak = 0; State.bestStreak = 0; State.totalCorrect = 0; State.totalWrong = 0; State.level = 1; State.currentQ = 0; State.badgesEarned = [];
-  let pool = [...QUESTION_BANKS[State.mode]]; for (let i=pool.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
-  State.questions = pool.slice(0, 10);
-  DOM.hdrName.textContent = State.playerName; DOM.hdrAvatar.innerHTML = AVATARS[0]; DOM.hdrScore.textContent = "0"; DOM.hdrLevel.textContent = "1"; updateLives();
-  showScreen("game-screen"); loadQuestion();
-}
-
-function pulseCanvas() { DOM.canvas.parentElement.classList.add("pulse"); setTimeout(() => DOM.canvas.parentElement.classList.remove("pulse"), 2100); }
-
-/* Confetti */
+/* Confetti Particles */
 const confettiParticles = []; let confettiAnimating = false;
-function fireConfetti(big = false) {
-  const cCount = big ? 120 : 40, W = window.innerWidth;
-  for (let i=0; i<cCount; i++) confettiParticles.push({ x:Math.random()*W, y:-10, vx:(Math.random()-0.5)*8, vy:Math.random()*5+2, color:["#ff6b35","#6c63ff","#2ec4b6","#ffd166","#ff9500"][i%5], size:Math.random()*10+5, rot:Math.random()*360, rotV:(Math.random()-0.5)*10, life:1 });
+function fireConfetti() {
+  for (let i=0; i<60; i++) confettiParticles.push({ x:window.innerWidth/2, y:window.innerHeight/2, vx:(Math.random()-0.5)*10, vy:(Math.random()-0.5)*10, color:["#ff6b35","#6c63ff","#2ec4b6","#ffd166"][i%4], size:Math.random()*8+4, life:1 });
   if (!confettiAnimating) animateConfetti();
 }
 function animateConfetti() {
@@ -471,47 +481,36 @@ function animateConfetti() {
   function act() {
     cxx.clearRect(0, 0, cEle.width, cEle.height);
     for (let i = confettiParticles.length-1; i>=0; i--) {
-      const p = confettiParticles[i]; p.x+=p.vx; p.y+=p.vy; p.rot+=p.rotV; p.vy+=0.1; p.life-=0.015;
-      if (p.life<=0||p.y>cEle.height) { confettiParticles.splice(i,1); continue; }
-      cxx.save(); cxx.translate(p.x, p.y); cxx.rotate(p.rot*Math.PI/180); cxx.globalAlpha=p.life; cxx.fillStyle=p.color; cxx.fillRect(-p.size/2, -p.size/4, p.size, p.size/2); cxx.restore();
+      const p = confettiParticles[i]; p.x+=p.vx; p.y+=p.vy; p.vy+=0.2; p.life-=0.02;
+      if (p.life<=0) { confettiParticles.splice(i,1); continue; }
+      cxx.fillStyle=p.color; cxx.globalAlpha=p.life; cxx.fillRect(p.x, p.y, p.size, p.size);
     }
     if(confettiParticles.length) requestAnimationFrame(act); else confettiAnimating = false;
   }
   requestAnimationFrame(act);
 }
 
-/* Event Listners */
-if(DOM.btnStart) DOM.btnStart.addEventListener("click", startGame);
-if(DOM.btnPlayNow) DOM.btnPlayNow.addEventListener("click", () => { window.scrollTo(0, 0); DOM.playerName.focus(); });
-if(DOM.playerName) DOM.playerName.addEventListener("keydown", e => { if(e.key==="Enter") startGame(); });
-DOM.modeModeCards.forEach(c => c.addEventListener("click", () => { DOM.modeModeCards.forEach(x => x.classList.remove("selected")); c.classList.add("selected"); State.mode = c.dataset.mode; }));
-if(DOM.btnHome) DOM.btnHome.addEventListener("click", () => showScreen("splash-screen"));
-if(DOM.btnStepNext) DOM.btnStepNext.addEventListener("click", nextStep);
-if(DOM.btnCheck) DOM.btnCheck.addEventListener("click", () => { State.step=4; updateStepIndicator(4); DOM.btnCheck.style.display="none"; DOM.btnStepNext.style.display="none"; DOM.answerSection.style.display="flex"; DOM.answerSection.classList.add("fade-in"); if(State.mode==="challenge"&&typeof State.q.answer==="string") DOM.fracAnsRow.style.display="flex"; });
-if(DOM.btnSubmit) DOM.btnSubmit.addEventListener("click", checkAnswer);
-if(DOM.answerInput) DOM.answerInput.addEventListener("keydown", e => { if(e.key==="Enter") checkAnswer(); });
-if(DOM.btnNextQ) DOM.btnNextQ.addEventListener("click", nextQuestion);
-if(DOM.btnPlayAgain) DOM.btnPlayAgain.addEventListener("click", startGame);
-if(DOM.btnHomeRes) DOM.btnHomeRes.addEventListener("click", () => showScreen("splash-screen"));
-
-const lbb = () => { DOM.lbModal.style.display="flex"; renderLeaderboard(State.mode); DOM.lbTabs.forEach(t=>t.classList.toggle("active",t.dataset.mode===State.mode)); };
-if(DOM.btnShowLb) DOM.btnShowLb.addEventListener("click", lbb);
-if(DOM.btnViewLb) DOM.btnViewLb.addEventListener("click", lbb);
-document.getElementById('footer-leaderboard')?.addEventListener('click', (e) => { e.preventDefault(); window.scrollTo(0,0); lbb(); });
-document.getElementById("lb-close")?.addEventListener("click", () => DOM.lbModal.style.display="none");
-DOM.lbTabs.forEach(t=>t.addEventListener("click",()=>{ DOM.lbTabs.forEach(x=>x.classList.remove("active")); t.classList.add("active"); renderLeaderboard(t.dataset.mode); }));
-
-// Header Language Dropdown
-const langSelector = document.getElementById("lang-selector");
-if (langSelector) {
-  langSelector.addEventListener("click", (e) => {
-    e.stopPropagation();
-    langSelector.classList.toggle("open");
+/* Initialization */
+document.addEventListener('DOMContentLoaded', () => {
+  initTheme(); initModals(); initImageSequence();
+  DOM.btnStart.addEventListener('click', () => {
+    State.playerName = DOM.playerName.value.trim() || "Explorer";
+    State.score = 0; State.lives = 3; State.currentQ = 0;
+    State.questions = [...QUESTION_BANKS[State.mode]].sort(()=>Math.random()-0.5).slice(0,10);
+    updateLives(); updateLevel(); showScreen('game-screen'); loadQuestion();
   });
-  document.addEventListener("click", () => {
-    langSelector.classList.remove("open");
-  });
-}
+  DOM.btnHome.addEventListener('click', () => showScreen('splash-screen'));
+  DOM.btnStepNext.addEventListener('click', () => { State.step++; if(State.step===4) { DOM.btnStepNext.style.display='none'; DOM.answerSection.style.display='flex'; } updateStepIndicator(State.step); redraw(); });
+  DOM.btnSubmit.addEventListener('click', checkAnswer);
+  DOM.btnNextQ.addEventListener('click', () => { State.currentQ++; loadQuestion(); });
+  DOM.btnPlayAgain.addEventListener('click', () => DOM.btnStart.click());
+  DOM.btnHomeRes.addEventListener('click', () => showScreen('splash-screen'));
+  DOM.vtabs.forEach(t => t.addEventListener('click', () => {
+    DOM.vtabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    State.visualMode = t.dataset.visual;
+    redraw();
+  }));
+});
 
-// Set initial selection
-if(DOM.modeModeCards.length) DOM.modeModeCards[1].classList.add('selected');
+function endRound() { showScreen('results-screen'); DOM.resScore.textContent = State.score; DOM.resCorrect.textContent = `${State.totalCorrect}/10`; saveScoreLocal(); }
